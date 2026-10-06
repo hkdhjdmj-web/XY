@@ -1,0 +1,103 @@
+-- ServerScriptService > ThaiStealHub
+local Players = game:GetService("Players")
+
+-- ===================================================
+-- [ แผงตั้งค่าหลักภาษาไทย - ปรับแต่งได้ที่นี่ ]
+-- ===================================================
+local ความเร็ววิ่ง = 100         -- ปรับได้ตั้งแต่ 1 - 1000
+local เปิดเสกไข่ไม่จำกัด = true  -- true = เปิดใช้งาน / false = ปิด
+local เวลาเสกไข่ = 0.1          -- วินาทีต่อฟอง (0.1 = รัวเร็วมาก)
+local ชื่อไข่ = "ไข่ลิงน่ารัก"
+
+-- ===================================================
+-- ระบบทำงานหลัก (4 ฟังก์ชัน)
+-- ===================================================
+
+-- ฟังก์ชันที่ 1: เสกไข่ไม่จำกัด
+local function เริ่มเสกไข่ไม่จำกัด(ผู้เล่น)
+	task.spawn(function()
+		local จำนวนไข่ = 0
+		while เปิดเสกไข่ไม่จำกัด do
+			task.wait(เวลาเสกไข่)
+			จำนวนไข่ += 1
+			
+			local โฟลเดอร์ไข่ = ผู้เล่น:FindFirstChild("Pets") or Instance.new("Folder", ผู้เล่น)
+			โฟลเดอร์ไข่.Name = "Pets"
+			
+			local ไข่ = Instance.new("Color3Value")
+			ไข่.Name = ชื่อไข่ .. " #" .. จำนวนไข่
+			ไข่.Value = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
+			ไข่.Parent = โฟลเดอร์ไข่
+		end
+	end)
+end
+
+-- ฟังก์ชันที่ 2: วาร์ปไปเอาไข่จากตัวที่โหดที่สุด
+local function วาร์ปไปเอาไข่(ตัวละคร, ผู้เล่น)
+	local ตำแหน่งเป้าหมาย = nil
+	local คะแนนสูงสุด = -1
+
+	-- ค้นหาผู้เล่นที่โหดที่สุดในห้อง
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= ผู้เล่น and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local stats = p:FindFirstChild("leaderstats")
+			local score = stats and (stats:FindFirstChild("Coins") or stats:FindFirstChild("Eggs") or stats:FindFirstChild("Points"))
+			local val = score and score.Value or 0
+			if val > คะแนนสูงสุด then
+				คะแนนสูงสุด = val
+				ตำแหน่งเป้าหมาย = p.Character.HumanoidRootPart.Position
+			end
+		end
+	end
+
+	-- วาร์ปทันทีถ้าเจอเป้าหมาย
+	if ตำแหน่งเป้าหมาย and ตัวละคร:FindFirstChild("HumanoidRootPart") then
+		ตัวละคร.HumanoidRootPart.CFrame = CFrame.new(ตำแหน่งเป้าหมาย + Vector3.new(0, 3, 0))
+		local กระเป๋า = ผู้เล่น:FindFirstChild("Backpack")
+		if กระเป๋า then
+			local ไข่ขโมย = Instance.new("Tool", กระเป๋า)
+			ไข่ขโมย.Name = "ไข่ขโมยสำเร็จ (วาร์ป)"
+		end
+	end
+end
+
+-- ฟังก์ชันที่ 3: ปรับความเร็วตัวละคร (1 - 1000)
+local function กำหนดความเร็ว(ตัวละคร, สปีด)
+	local ฮิวมานอยด์ = ตัวละคร:WaitForChild("Humanoid")
+	-- บังคับให้อยู่ในช่วง 1 - 1000
+	local ความเร็วที่ใชัจริง = math.clamp(สปีด, 1, 1000)
+	ฮิวมานอยด์.WalkSpeed = ความเร็วที่ใชัจริง
+end
+
+-- ฟังก์ชันที่ 4: เล่นอีเว้นต์ทุกอย่างในแมพให้อัตโนมัติ
+local function เล่นอีเว้นต์อัตโนมัติ(ผู้เล่น)
+	task.spawn(function()
+		while task.wait(2) do
+			-- ตรวจหาจุดเกิดอีเว้นต์ หรือกล่องสุ่มใน Workspace เพื่อรับรางวัลอัตโนมัติ
+			for _, obj in ipairs(workspace:GetDescendants()) do
+				if obj:IsA("ProximityPrompt") and (obj.ObjectText:find("Event") or obj.ActionText:find("รับ") or obj.ActionText:find("Claim")) then
+					fireproximityprompt(obj)
+				end
+			end
+		end
+	end)
+end
+
+-- ===================================================
+-- เริ่มต้นทำงานเมื่อผู้เล่นเข้าเกม
+-- ===================================================
+Players.PlayerAdded:Connect(function(ผู้เล่น)
+	เริ่มเสกไข่ไม่จำกัด(ผู้เล่น)
+	เล่นอีเว้นต์อัตโนมัติ(ผู้เล่น)
+
+	ผู้เล่น.CharacterAdded:Connect(function(ตัวละคร)
+		กำหนดความเร็ว(ตัวละคร, ความเร็ววิ่ง)
+		
+		-- วาร์ปไปเอาไข่อัตโนมัติทุกๆ 5 วินาที
+		task.spawn(function()
+			while task.wait(5) do
+				วาร์ปไปเอาไข่(ตัวละคร, ผู้เล่น)
+			end
+		end)
+	end)
+end)
